@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+        .container { padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 600px; margin: 0 auto; }
+        .header { font-size: 20px; color: #dd6b20; font-weight: bold; }
+        .section-title { font-weight: bold; margin-top: 20px; margin-bottom: 5px; color: #2d3748; }
+        .url-list { background-color: #f7fafc; padding: 15px 15px 15px 35px; border-radius: 4px; border-left: 4px solid #dd6b20; margin: 5px 0 15px 0; }
+        .url-list.already { border-left-color: #4a5568; background-color: #edf2f7; }
+        .url-list.invalid { border-left-color: #e53e3e; background-color: #fff5f5; }
+        .url-item { font-family: 'Courier New', Courier, monospace; color: #4a5568; margin-bottom: 5px; }
+        .url-list.invalid .url-item { color: #c53030; }
+    </style>
+</head>
+<body>
+    {% set email = info.email %}
+    {% set valid_urls = info.valid_urls %}
+    {% set already_tracked_urls = info.already_tracked_urls %}
+    {% set invalid_urls = info.invalid_urls %}
+    <div class="container">
+        <p class="header">🔄 Uptime Sentinel: Monitoring Profile Updated</p>
+        <p>Hello, the target configuration profile assigned to <strong>{{ email }}</strong> has been revised.</p>
+        
+        {% if valid_urls %}
+        <div class="section-title">✅ Newly Added Targets:</div>
+        <ul class="url-list">
+            {% for url in valid_urls %}
+                <li class="url-item">{{ url }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if already_tracked_urls %}
+        <div class="section-title">ℹ️ Note: Already Tracked by You:</div>
+        <ul class="url-list already">
+            {% for url in already_tracked_urls %}
+                <li class="url-item">{{ url }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if invalid_urls %}
+        <div class="section-title">❌ Failed Validation (Skipped):</div>
+        <ul class="url-list invalid">
+            {% for url in invalid_urls %}
+                <li class="url-item">{{ url }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+        <small style="color: #718096;">If you did not execute this profile adjustment, please audit your dashboard credentials.</small>
+    </div>
+</body>
+</html>

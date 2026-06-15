@@ -1,0 +1,39 @@
+<!-- templates/report.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .Online { color: green; font-weight: bold; }
+        .Offline { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Daily Uptime Summary</h2>
+    <p>Here is the status breakdown for the websites tracked under <strong>{{ email }}</strong> over the last 24 hours:</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Target URL</th>
+                <th>24h Uptime Percentage</th>
+                <th>Average Response Time</th>
+                <th>Current Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for target in data %}
+            <tr>
+                <td>{{ target.url }}</td>
+                <td>{{ target.uptime_percentage }}</td>
+                <td>{{ target.avg_response_time }}</td>
+                <td class="{{ target.status }}">{{ target.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

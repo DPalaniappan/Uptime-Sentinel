@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+        .container { padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 600px; margin: 0 auto; }
+        .header { font-size: 20px; color: #2b6cb0; font-weight: bold; }
+        .section-title { font-weight: bold; margin-top: 20px; margin-bottom: 5px; color: #2d3748; }
+        .url-list { background-color: #f7fafc; padding: 15px 15px 15px 35px; border-radius: 4px; border-left: 4px solid #2b6cb0; margin: 5px 0 15px 0; }
+        .url-list.already { border-left-color: #4a5568; background-color: #edf2f7; }
+        .url-list.invalid { border-left-color: #e53e3e; background-color: #fff5f5; }
+        .url-item { font-family: 'Courier New', Courier, monospace; color: #4a5568; margin-bottom: 5px; }
+        .url-list.invalid .url-item { color: #c53030; }
+    </style>
+</head>
+<body>
+    {% set email = info.email %}
+    {% set valid_urls = info.valid_urls %}
+    {% set invalid_urls = info.invalid_urls %}
+    <div class="container">
+        <p class="header">🚀 Welcome to Uptime Sentinel!</p>
+        <p>Thank you for initating your first tracking session, <strong>{{ email }}</strong>.</p>
+        <p>We have successfully initialized your tracking profile.</p>
+        
+        {% if valid_urls %}
+        <div class="section-title">✅ Now Monitoring (New):</div>
+        <ul class="url-list">
+            {% for url in valid_urls %}
+                <li class="url-item">{{ url }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if already_tracked %}
+        <div class="section-title">ℹ️ Already Tracked (Skipped Duplicates):</div>
+        <ul class="url-list already">
+            {% for url in already_tracked %}
+                <li class="url-item">{{ url }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if invalid_urls %}
+        <div class="section-title">❌ Failed Validation (Skipped):</div>
+        <ul class="url-list invalid">
+            {% for url in invalid_urls %}
+                <li class="url-item">{{ url }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+        <small style="color: #718096;">You will receive an automated status digest every morning at 8:00 AM.</small>
+    </div>
+</body>
+</html>

@@ -11,7 +11,7 @@ def list_of_all_targets():
 @main.route('/targets', methods=['GET'])
 def view_targets():
     targets = tracker_service.get_all_targets()
-    return render_template('targets.html', targets=targets)
+    return render_template('emails/targets.html', targets=targets)
 
 @main.route('/addtarget', methods=['POST'])
 def add_target():
@@ -42,7 +42,7 @@ def track_targets():
     return jsonify(result), status_code
     
 
-@main.route('/pingtarget/', methods=['GET'])
+@main.route('/pinglogs/', methods=['GET'])
 def get_targets():
     url = request.args.get('url')
     if not url:

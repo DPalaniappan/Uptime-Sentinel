@@ -31,15 +31,6 @@
         </ul>
         {% endif %}
 
-        {% if already_tracked %}
-        <div class="section-title">ℹ️ Already Tracked (Skipped Duplicates):</div>
-        <ul class="url-list already">
-            {% for url in already_tracked %}
-                <li class="url-item">{{ url }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-
         {% if invalid_urls %}
         <div class="section-title">❌ Failed Validation (Skipped):</div>
         <ul class="url-list invalid">

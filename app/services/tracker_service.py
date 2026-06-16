@@ -218,7 +218,7 @@ def process_user_tracking(email: str, targets_input) -> tuple[dict, int]:
         if not target:
             target = Target(url=url)
             db.session.add(target)
-            db.flush()  # Ensure target.id is populated
+            db.session.flush()
             newly_created_ids.append(target.id)
         if target in user.targets:
             already_tracked_urls.append(url)

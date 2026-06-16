@@ -1,32 +1,73 @@
-# Uptime Sentinel
+## ✨ Key Features
 
-Uptime Sentinel is a robust Flask-based web application designed to monitor the availability of web targets. It features real-time pinging, automatic quarantine of failing targets, daily reporting, and asynchronous email notifications.
+- **🚀 Real-Time Monitoring:** High-frequency ping cycles for active targets every minute.
+- **🛠️ Automated Lifecycle:** Targets transition between `ACTIVE`, `QUARANTINED`, and `INACTIVE` based on failure rates.
+- **📧 Async Notifications:** Multi-threaded email dispatch for downtime alerts and recovery notifications.
+- **📊 Daily Health Reports:** Automated summary reports delivered directly to your inbox.
+- **🧵 High Concurrency:** Optimized thread pool management for background tasks (pings, emails).
+- **⏰ Integrated Scheduler:** Precision scheduling with `APScheduler` for routine checks and reports.
 
-## Prerequisites
+---
 
-- Python 3.8 or higher
-- Gmail account (for SMTP email notifications)
+## 📋 Prerequisites
 
-## Setup Instructions
+- **Python:** version 3.8 or higher.
+- **SMTP Provider:** A Gmail account (with an App Password) or a similar SMTP service.
 
-### 1. Create a Virtual Environment
-Navigate to the project root directory and create a virtual environment:
+---
+
+## ⚙️ Installation & Setup
+
+### 1. Initialize the Environment
+Navigate to the project root and create a Python virtual environment:
 ```bash
 python -m venv .venv
 ```
 
-### 2. Activate the Virtual Environment
-- **Windows (PowerShell):** `.venv\Scripts\Activate.ps1`
-- **Linux / macOS:** `source .venv/bin/activate`
+### 2. Activate the Environment
+- **Windows (PowerShell):**
+  ```powershell
+  .venv\Scripts\Activate.ps1
+  ```
+- **Linux / macOS:**
+  ```bash
+  source .venv/bin/activate
+  ```
 
 ### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
-Create a `.env` file in the project root directory:
+### 4. Environment Configuration
+Create a `.env` file in the root directory and populate it with your credentials:
 ```env
-DATABASE_URL=your-url
+DATABASE_URL=sqlite:///uptime_sentinel.db
 MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-password
+MAIL_PASSWORD=your-app-specific-password
+```
+
+---
+
+## 🚀 Running the Application
+
+### Initialize the Database
+Before launching the server for the first time, you must initialize the database schema:
+```bash
+flask init-db
+```
+
+### Start the Server
+```bash
+flask run
+```
+The application will be available at `http://127.0.0.1:5000`.
+
+---
+
+## 🛠️ CLI Reference
+
+| Command | Description |
+| :--- | :--- |
+| `flask init-db` | Creates all required database tables. |
+| `flask drop-db` | Removes all tables from the database (Destructive). |

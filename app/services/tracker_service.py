@@ -1,7 +1,8 @@
 import time
 import requests
 import validators
-from datetime import datetime, timedelta
+from flask import current_app
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from ..models import Target, PingLog, TargetStatus, User
 from sqlalchemy.orm import joinedload
@@ -9,12 +10,16 @@ from .email_service import send_welcome_email, send_tracking_update_email, send_
 from ..extensions import scheduler, db
 from ..utils.decorators import with_app_context
 
+ping_executor = ThreadPoolExecutor(max_workers=25)
+quarantine_executor = ThreadPoolExecutor(max_workers=5)
+inactive_executor = ThreadPoolExecutor(max_workers=2)
+
 @with_app_context
 def run_global_ping_cycle(app):
     BATCH_SIZE = 50
     page = 1
     
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    try:
         while True:
             target_batch = Target.query.filter_by(status=TargetStatus.ACTIVE).paginate(page=page, per_page=BATCH_SIZE, error_out=False).items
             
@@ -22,16 +27,18 @@ def run_global_ping_cycle(app):
                 break
             
             for target in target_batch:
-                executor.submit(_execute_individual_ping, app, target.id)
+                ping_executor.submit(_execute_individual_ping, app, target.id)
 
             page += 1
+    finally:
+        db.session.remove()
 
 @with_app_context   
 def run_quarantine_cycle(app):
     BATCH_SIZE = 50
     page = 1
     
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    try:
         while True:
             target_batch = Target.query.filter_by(status=TargetStatus.QUARANTINED).paginate(page=page, per_page=BATCH_SIZE, error_out=False).items
             
@@ -39,20 +46,24 @@ def run_quarantine_cycle(app):
                 break
             
             for target in target_batch:
-                executor.submit(_execute_individual_ping, app, target.id)
-        page += 1 
+                quarantine_executor.submit(_execute_individual_ping, app, target.id)
+            page += 1 
+    finally:
+        db.session.remove()
 
 @with_app_context
 def run_inactive_ping_cycle(app):
-    inactive_batch = Target.query.filter_by(status=TargetStatus.INACTIVE).all()
-        
-    with ThreadPoolExecutor(max_workers=2) as executor: 
+    try:
+        inactive_batch = Target.query.filter_by(status=TargetStatus.INACTIVE).all()
         for target in inactive_batch:
-            executor.submit(_execute_individual_ping, app, target.id)  
+            inactive_executor.submit(_execute_individual_ping, app, target.id)  
+    finally:
+        db.session.remove()
 
 @with_app_context
 def _execute_individual_ping(app, target_id):
-    target = Target.query.get(target_id)
+    # Use session.get to ensure we aren't using a cached object from a stale session
+    target = db.session.get(Target, target_id)
     if not target:
         return
     
@@ -67,43 +78,51 @@ def _execute_individual_ping(app, target_id):
         is_online = False
         status_code = -1
 
+    now = datetime.now(timezone.utc)
     
-    ping_log = PingLog(
-        target_id=target_id,
-        response_time=response_time,
-        is_online=is_online,
-        status_code=status_code
-    )
-    target.last_ping = datetime.utcnow()
-    db.session.add(ping_log)
+    try:
+        target.last_ping = now
+        target.is_online = is_online
+        
+        ping_log = PingLog(
+            target=target,
+            timestamp=now,
+            response_time=response_time,
+            is_online=is_online,
+            status_code=status_code
+        )
+        db.session.add(ping_log)
 
-    _transition_target_status(target, is_online)
-    db.session.commit()
+        _transition_target_status(target, is_online)
+        db.session.commit()
+    finally:
+        # This is critical in background threads to prevent stale data
+        db.session.remove()
     
 def _transition_target_status(target, is_online: bool):
     if is_online:
         target.consecutive_failures = 0
         if target.status == TargetStatus.QUARANTINED:
             target.status = TargetStatus.ACTIVE
-            target.status_changed_at = datetime.utcnow()
+            target.status_changed_at = datetime.now(timezone.utc)
         
         elif target.status == TargetStatus.INACTIVE:
             target.status = TargetStatus.ACTIVE
-            target.status_changed_at = datetime.utcnow()
-            _run_recovery_alert(target, datetime.utcnow())
+            target.status_changed_at = datetime.now(timezone.utc)
+            _run_recovery_alert(target, datetime.now(timezone.utc))
     else:
         target.consecutive_failures += 1
         if target.status == TargetStatus.ACTIVE:
             if target.consecutive_failures > 30:
                 target.status = TargetStatus.QUARANTINED
                 target.consecutive_failures = 0
-                target.status_changed_at = datetime.utcnow()
+                target.status_changed_at = datetime.now(timezone.utc)
         
         elif target.status == TargetStatus.QUARANTINED:
             if target.consecutive_failures > 12:
                 target.status = TargetStatus.INACTIVE
-                target.status_changed_at = datetime.utcnow()
-                _run_downtime_alert(target, datetime.utcnow())
+                target.status_changed_at = datetime.now(timezone.utc)
+                _run_downtime_alert(target, datetime.now(timezone.utc))
 
 def _run_downtime_alert(target, timestamp):
     """Safely extracts users and queues a non-blocking downtime notification."""
@@ -123,10 +142,12 @@ def _run_recovery_alert(target, timestamp):
 def run_daily_reporting_cycle(app):
     BATCH_SIZE = 100
     page = 1
-    last_24h = datetime.utcnow() - timedelta(days=1)
+    last_24h = datetime.now(timezone.utc) - timedelta(days=1)
     while True:
-        user_batch = User.query.options(
-        joinedload(User.targets).joinedload(Target.ping_logs)).filter( PingLog.timestamp >= last_24h ).paginate(page=page, per_page=BATCH_SIZE, error_out=False).items
+        user_batch = User.query.options(joinedload(User.targets).joinedload(Target.ping_logs))\
+            .join(User.targets).join(Target.pings)\
+            .filter(PingLog.timestamp >= last_24h).distinct(User.id)\
+            .paginate(page=page, per_page=BATCH_SIZE, error_out=False).items
             
         if not user_batch:
             break
@@ -153,7 +174,7 @@ def compile_and_send_daily_report(user, last_24h):
                 'target_url': target.url,
                 'uptime_percentage': uptime_percentage,
                 'avg_response_time': avg_response_time,
-                'status': 'Online' if ping_logs[-1].is_online else 'Offline'
+                'status': 'Online' if target.is_online else 'Offline'
             })
     if report_data:
         send_daily_report_email(user.email, report_data)
@@ -165,6 +186,8 @@ def add_new_target(url:str)->tuple[dict, int]:
     new_target = Target(url=url)
     db.session.add(new_target)
     db.session.commit()
+    ping_executor.submit(_execute_individual_ping, current_app._get_current_object(), new_target.id)
+
     return {'message': 'Target added successfully'}, 201
 
 def process_user_tracking(email: str, targets_input) -> tuple[dict, int]:
@@ -185,6 +208,7 @@ def process_user_tracking(email: str, targets_input) -> tuple[dict, int]:
     invalid_urls = []
     valid_urls = []
     already_tracked_urls = []
+    newly_created_ids = []
 
     for url in target_urls:
         if not validators.url(url):
@@ -194,7 +218,8 @@ def process_user_tracking(email: str, targets_input) -> tuple[dict, int]:
         if not target:
             target = Target(url=url)
             db.session.add(target)
-            db.flush()  
+            db.flush()  # Ensure target.id is populated
+            newly_created_ids.append(target.id)
         if target in user.targets:
             already_tracked_urls.append(url)
         else:
@@ -202,6 +227,12 @@ def process_user_tracking(email: str, targets_input) -> tuple[dict, int]:
             valid_urls.append(url)  
         
     db.session.commit()
+
+    if newly_created_ids:
+        app_obj = current_app._get_current_object()
+        for tid in newly_created_ids:
+            ping_executor.submit(_execute_individual_ping, app_obj, tid)
+
     all_current_urls = [t.url for t in user.targets]
     info = {
         'message': 'Tracking updated',
@@ -233,6 +264,9 @@ def get_user_targets(email: str) -> tuple[dict, int]:
     if not user:
         return {'error': 'User not found'}, 404
     
-    targets = [target.to_dict() for target in user.targets]
+    targets = [target.display_target_info() for target in user.targets]
     return {'targets': targets}, 200
 
+def get_all_targets() -> list:
+    targets = Target.query.all()
+    return [target.display_target_info() for target in targets]

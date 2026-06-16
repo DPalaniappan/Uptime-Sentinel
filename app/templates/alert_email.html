@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+        .container { padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 600px; margin: 0 auto; border-top: 4px solid #e53e3e; }
+        .header { font-size: 20px; color: #c53030; font-weight: bold; }
+        .alert-box { background-color: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .label { font-weight: bold; color: #4a5568; width: 120px; display: inline-block; }
+        .value { font-family: 'Courier New', Courier, monospace; color: #2d3748; }
+        .status-badge { background-color: #e53e3e; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; text-transform: uppercase; }
+        .footer { color: #718096; font-size: 12px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if is_online %}
+        <p class="header">✅ Uptime Alert: Target Online</p>
+        <p>Hello,</p>
+        <p>Good news! The monitored target is currently reachable and operating normally.</p>
+        {% else %}
+        <p class="header">⚠️ Uptime Alert: Target Offline</p>
+        <p>Hello,</p>
+        <p>Our monitoring system has detected that one of your tracked targets is currently unreachable.</p>
+        {% endif %}
+
+        <div class="alert-box">
+            <div>
+                <span class="label">Target URL:</span>
+                <span class="value">{{ url }}</span>
+            </div>
+            <div>
+                <span class="label">Status:</span>
+                {% if is_online %}
+                <span class="status-badge" style="background-color: #38a169;">Online</span>
+                {% else %}
+                <span class="status-badge">Offline</span>
+                {% endif %}
+            </div>
+            <div>
+                <span class="label">Detected At:</span>
+                <span class="value">{{ timestamp }}</span>
+            </div>
+            {% if error_message %}
+            <div style="margin-top: 10px; border-top: 1px solid #feb2b2; padding-top: 10px;">
+                <span class="label">Error Detail:</span>
+                <div class="value" style="margin-top: 5px; font-size: 13px;">{{ error_message }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <p class="footer">This is an automated notification from <strong>Uptime Sentinel</strong>. We will continue to monitor the target and resume normal reporting once it is back online.</p>
+    </div>
+</body>
+</html>

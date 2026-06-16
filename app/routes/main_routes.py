@@ -1,15 +1,19 @@
 import validators
-from flask import request, jsonify, Blueprint
+from flask import request, jsonify, Blueprint, render_template, redirect, url_for
 from ..services import tracker_service
 
 main = Blueprint('main', __name__)
 
 @main.route('/', methods=['GET'])
 def list_of_all_targets():
-    targets = tracker_service.get_all_targets()
-    return redirect()
+    return redirect(url_for('main.view_targets'))
 
-@main.route('/target', methods=['POST'])
+@main.route('/targets', methods=['GET'])
+def view_targets():
+    targets = tracker_service.get_all_targets()
+    return render_template('targets.html', targets=targets)
+
+@main.route('/addtarget', methods=['POST'])
 def add_target():
     data = request.get_json() 
     url = data.get('url')
@@ -38,7 +42,7 @@ def track_targets():
     return jsonify(result), status_code
     
 
-@main.route('/ping/', methods=['GET'])
+@main.route('/pingtarget/', methods=['GET'])
 def get_targets():
     url = request.args.get('url')
     if not url:

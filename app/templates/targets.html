@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uptime Sentinel - Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+        h1 { margin: 0; color: #2b6cb0; font-size: 24px; }
+        .refresh-btn { background-color: #2b6cb0; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .refresh-btn:hover { background-color: #1e4e8c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; background-color: #f8fafc; color: #4a5568; padding: 12px; border-bottom: 2px solid #edf2f7; }
+        td { padding: 12px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .status-online { background-color: #c6f6d5; color: #22543d; }
+        .status-offline { background-color: #fed7d7; color: #822727; }
+        .status-quarantine { background-color: #feebc8; color: #7b341e; }
+        .status-deactive { background-color: #edf2f7; color: #4a5568; }
+        .url-text { font-family: 'Courier New', monospace; color: #2d3748; }
+        .empty-state { text-align: center; padding: 40px; color: #718096; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-flex">
+            <h1>Monitoring Dashboard</h1>
+            <button onclick="window.location.reload();" class="refresh-btn">
+                🔄 Refresh Targets
+            </button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Target URL</th>
+                    <th>Added On</th>
+                    <th> Monitor Status</th>
+                    <th>Last Ping</th>
+                    <th>Status Changed At</th>
+                    <th>Is online</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if targets %}
+                    {% for target in targets %}
+                    <tr>
+                        <td class="url-text">{{ target.url }}</td>
+                        <td>{{ target.added_on }}</td>
+                        <td>
+                            {% set status_class = 'status-online' if target.status == 'active' 
+                                               else 'status-offline' if target.status == 'offline'
+                                               else 'status-quarantine' if target.status == 'quarantine'
+                                               else 'status-deactive' %}
+                            <span class="status-pill {{ status_class }}">
+                                {{ target.status }}
+                            </span>
+                        </td>
+                        <td>{{ target.last_ping if target.last_ping else 'Pending...' }}</td>
+                        <td>{{ target.status_changed_at }}</td>
+                        <td>
+                            {% if target.is_online %}
+                                <span style="color: #38a169; font-weight: bold;">Online</span>
+                            {% else %}
+                                <span style="color: #e53e3e; font-weight: bold;">Offline</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            No targets found. Add some URLs to start monitoring!
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

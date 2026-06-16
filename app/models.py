@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.extensions import db
+from sqlalchemy import event
 from enum import Enum
 
 
@@ -19,30 +20,31 @@ class TargetStatus(str, Enum):
 class Target(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(500), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_ping = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.Enum(TargetStatus), default=TargetStatus.ACTIVE, nullable=False)
     consecutive_failures = db.Column(db.Integer, default=0)
-    status_changed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    currently_online = db.relationship('PingLog', backref='current_status', lazy=True, uselist=False, primaryjoin="and_(Target.id==PingLog.target_id, PingLog.timestamp==Target.last_ping)")
+    status_changed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    is_online = db.Column(db.Boolean, default=True)
     pings = db.relationship('PingLog', backref='target', lazy=True)
 
     def to_dict(self):
         return {
             'id': self.id,
             'url': self.url,
-            'created_at': self.created_at.isoformat(),
-            'consecutive_failures': self.consecutive_failures
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'consecutive_failures': self.consecutive_failures,
+            'is_online': self.is_online
         }
     
     def display_target_info(self):
         return {
             'url': self.url,
-            'added_on': self.created_at.isoformat(),
-            'last_ping': self.last_ping.isoformat() if self.last_ping else None,
+            'added_on': self.created_at.strftime('%b %d, %Y %I:%M %p'),
+            'last_ping': self.last_ping.strftime('%b %d, %Y %I:%M:%S %p') if self.last_ping else "Never",
             'status': self.status.value,
-            'status_changed_at': self.status_changed_at.isoformat(),
-            'currently_online': self.currently_online
+            'status_changed_at': self.status_changed_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'is_online': self.is_online
         }
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -60,8 +62,8 @@ class User(db.Model):
 class PingLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     target_id = db.Column(db.Integer, db.ForeignKey('target.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    response_time = db.Column(db.Float, nullable=False)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    response_time = db.Column(db.Float, nullable=True)
     is_online = db.Column(db.Boolean, nullable=False)
     status_code = db.Column(db.Integer, nullable=False)
 
@@ -69,9 +71,8 @@ class PingLog(db.Model):
         return {
             'id': self.id,
             'target_id': self.target_id,
-            'timestamp': self.timestamp.isoformat(),
-            'response_time': self.response_time,
+            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'response_time': f"{self.response_time:.3f}s" if self.response_time else "N/A",
             'is_online': self.is_online,
             'status_code': self.status_code
         }
-

@@ -3,8 +3,10 @@ from flask_mailman import Mail
 from flask_apscheduler import APScheduler
 from dotenv import load_dotenv
 import os
+import click
 
-load_dotenv('../.env')
+# Load .env from the project root (relative to where you run the command)
+load_dotenv()
 
 db = SQLAlchemy()
 mail = Mail()
@@ -26,7 +28,14 @@ def configure_extensions(app):
     db.init_app(app)
     mail.init_app(app)
     scheduler.init_app(app)
-    scheduler.start()
+
+    # Only start the scheduler if we aren't running a CLI command like init-db
+    if os.environ.get("FLASK_RUN_FROM_CLI") != "true":
+        scheduler.start()
+    
+    
+    app.cli.add_command(drop_db_command)
+    app.cli.add_command(init_db_command)
     
     from .services.tracker_service import run_global_ping_cycle, run_daily_reporting_cycle, run_quarantine_cycle, run_inactive_ping_cycle
     
@@ -35,7 +44,7 @@ def configure_extensions(app):
         func=run_global_ping_cycle,
         trigger='interval',
         args=[app],
-        minutes=5
+        minutes=1
     )
 
     scheduler.add_job(
@@ -62,5 +71,20 @@ def configure_extensions(app):
         hour=8,
         minute=0
     )
-
     
+@click.command("init-db")
+def init_db_command():
+    """Creates database tables cleanly via CLI."""
+    from . import models
+    print("Initializing database tables...")
+    db.create_all()
+    click.echo("✅ Database tables initialized successfully!")
+
+
+@click.command("drop-db")
+def drop_db_command():
+    """Drops the database tables."""
+    from . import models
+    print("Dropping database tables...")
+    db.drop_all()
+    click.echo("🗑️ Database tables dropped successfully!")

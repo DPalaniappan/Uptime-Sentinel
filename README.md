@@ -11,7 +11,7 @@
 
 ## 📋 Prerequisites
 
-- **Python:** version 3.8 or higher.
+- **Python:** version 3.11 or higher.
 - **SMTP Provider:** A Gmail account (with an App Password) or a similar SMTP service.
 
 ---

@@ -27,6 +27,6 @@ pip install -r requirements.txt
 ### 4. Configure Environment Variables
 Create a `.env` file in the project root directory:
 ```env
-DATABASE_URL=sqlite:///uptime_sentinel.db
+DATABASE_URL=your-url
 MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-password
